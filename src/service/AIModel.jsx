@@ -1,84 +1,102 @@
-// AIModel.jsx
-import { GoogleGenAI } from "@google/genai";
+// ✅ AIModel.jsx
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-let chatSession; // We will store the single chat session here
+export let chatSession = null;
 
 /**
- * Initializes the GoogleGenAI client and starts a chat session.
- * This is called only once, the first time getChatSession() is invoked.
+ * Initializes Gemini and creates a reusable chat session.
  */
 const initializeChat = () => {
-  // 1. Get the key at the moment it's needed
-  const API_KEY = import.meta.env.VITE_GOOGLE_GEMINI_AI_API_KEY;
+  // Get API Key from Vite environment
+  const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-  // 2. Robust check for a valid API key (catches undefined, "", or "   ")
+  // Validate API key
   if (!API_KEY || API_KEY.trim() === "") {
-    console.error("------------------------------------------------");
-    console.error("ERROR: VITE_GOOGLE_GEMINI_AI_API_KEY IS NOT SET");
-    console.error("Please check your .env file. It might be empty or just spaces.");
-    console.error("Make sure you restart your server after editing the .env file.");
-    console.error("------------------------------------------------");
-    throw new Error("API Key not found or is invalid. Please check your .env file.");
+    console.error(
+      "❌ Missing Gemini API Key. Please add VITE_GEMINI_API_KEY in your .env file."
+    );
+    throw new Error(
+      "Gemini API key not found. Check your .env and restart the dev server."
+    );
   }
-  
-  // 3. Log success and initialize the client
-  console.log("Initializing GoogleGenAI (API Key found)...");
-  
-  const genAI = new GoogleGenAI(API_KEY);
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  // Initialize the Gemini API client
+  const genAI = new GoogleGenerativeAI(API_KEY);
 
+  // Choose the Gemini model
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+
+  // Generation config
   const generationConfig = {
-    temperature: 1,
+    temperature: 0.7,
     topP: 0.95,
     topK: 64,
     maxOutputTokens: 8192,
-    responseMimeType: 'application/json',
+    responseMimeType: "application/json",
   };
 
+  // Optional default conversation history
   const history = [
     {
-      role: 'user',
+      role: "user",
       parts: [
         {
-          text: `Generate a Travel Plan for Location: Las Vegas,
-          for 3 Days for a Couple with a Cheap budget.
-          Give me Hotels options list with Hotel Name, Hotel Address,
-          Price, hotel image URL, geo coordinates, rating, description,
-          and suggest an itinerary with place names.`,
+          text: `Generate Travel Plan for Location: Las Vegas, for 3 Days for Couple with a Cheap budget. 
+          Give me a Hotels options list with Hotel Name, Hotel address, Price, hotel image url, 
+          geo coordinates, rating, descriptions and suggest itinerary with placeName, Place Details, 
+          Place Image Url, Geo Coordinates, ticket Pricing, Time to travel for each location for 3 days.`,
         },
       ],
     },
     {
-      role: 'model',
+      role: "model",
       parts: [
         {
-          text: `Sure! I’ll generate a 3-day Las Vegas travel plan
-          including hotels, attractions, and travel timing —
-          all in structured JSON format.`,
+          text: "Sure! I'll generate a 3-day Las Vegas travel plan with hotels and itinerary in JSON format.",
         },
       ],
     },
   ];
 
-  // 4. Create and store the chat session
+  // Create a single chat session
   chatSession = model.startChat({
     generationConfig,
     history,
   });
 
+  console.log("✅ Gemini chat session initialized successfully");
   return chatSession;
 };
 
 /**
- * Public function to get the chat session.
- * It will either return the existing session or create a new one.
+ * Returns the existing chat session or initializes a new one if not present.
  */
 export const getChatSession = () => {
-  // If the session isn't created yet, create it.
-  // Otherwise, return the one we already have (Singleton pattern).
   if (!chatSession) {
     chatSession = initializeChat();
   }
   return chatSession;
+};
+
+// ======================================================
+// ⭐ ADDED CHATBOT FUNCTION — (Non-breaking addition)
+// ======================================================
+
+/**
+ * Sends a normal chatbot message to Gemini and returns text response.
+ * This does NOT modify any of your existing travel-planner logic.
+ */
+export const sendToAI = async (message) => {
+  try {
+    const session = getChatSession();
+    const result = await session.sendMessage(message);
+
+    // Extract the text safely
+    const textResponse = result?.response?.text() || "No response from AI.";
+
+    return textResponse;
+  } catch (err) {
+    console.error("❌ Chatbot Error:", err);
+    return "Sorry, I'm having trouble responding right now.";
+  }
 };
