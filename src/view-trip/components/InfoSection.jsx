@@ -65,7 +65,7 @@ function InfoSection({ trip }) {
     try {
       const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
       const response = await axios.get(
-        `http://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${location}`
+        `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${location}`
       );
       setWeather(response.data);
     } catch (error) {
